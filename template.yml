@@ -1,10 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
-# 1. ఈ లైన్ ఖచ్చితంగా ఉండాలి మరియు లైన్ మొదట్లోనే ఉండాలి
 Resources:
-
-  # 2. దీనికి ముందు కనీసం 2 స్పేసెస్ ఉండాలి
   MyLocalFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -15,8 +12,22 @@ Resources:
       MemorySize: 256
       Timeout: 30
       CodeUri: mylambda/
-     
-          
+      
+      # IAM Policies ఇక్కడ యాడ్ చేయబడ్డాయి
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "bedrock:InvokeModel"
+                - "bedrock:InvokeModelWithResponseStream"
+              Resource: "*" # భద్రత కోసం మీరు వాడుతున్న మోడల్ ARN ని ఇక్కడ ఇవ్వడం ఉత్తమం
+            - Effect: Allow
+              Action:
+                - "logs:CreateLogGroup"
+                - "logs:CreateLogStream"
+                - "logs:PutLogEvents"
+              Resource: "arn:aws:logs:*:*:*"
+
       Events:
         MyApiEvent:
           Type: Api
