@@ -1,0 +1,20 @@
+ MyLocalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 30
+      CodeUri: mylambda/
+      Role: !GetAtt MyLambdaExecutionRole.Arn
+      
+
+          
+      Events:
+        MyApiEvent:
+          Type: Api
+          Properties:
+            Path: /ask
+            Method: post
