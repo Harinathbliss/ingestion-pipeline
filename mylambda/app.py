@@ -11,7 +11,7 @@ class ChatDemo(BaseModel):
 
 
 def lambda_handler(event,context):
-     request_body = json.loads(event.get('body'),{})
+     request_body = json.loads(event.get('body',{}))
      
      logging.info(f"Request Body {request_body}")
 
