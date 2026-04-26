@@ -1,4 +1,11 @@
- MyLocalFunction:
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+# 1. ఈ లైన్ ఖచ్చితంగా ఉండాలి మరియు లైన్ మొదట్లోనే ఉండాలి
+Resources:
+
+  # 2. దీనికి ముందు కనీసం 2 స్పేసెస్ ఉండాలి
+  MyLocalFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: app.lambda_handler
@@ -10,7 +17,10 @@
       CodeUri: mylambda/
       Role: !GetAtt MyLambdaExecutionRole.Arn
       
-
+      # 3. మీ డైనమో డీబీ టేబుల్ పేరును ఇక్కడ లింక్ చేయండి
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref MyChatHistoryTable
           
       Events:
         MyApiEvent:
