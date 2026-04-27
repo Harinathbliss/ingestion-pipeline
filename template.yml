@@ -37,12 +37,12 @@ Resources:
                 - "logs:PutLogEvents"
               Resource: "arn:aws:logs:*:*:*"
             - Effect: Allow
-                Action:
+              Action:
                   - "dynamodb:PutItem"
                   - "dynamodb:GetItem"
                   - "dynamodb:Query"
                   - "dynamodb:UpdateItem"
-                Resource: !GetAtt MyChatHistoryTable.Arn
+              Resource: !GetAtt MyChatHistoryTable.Arn
 
       Events:
         MyApiEvent:
