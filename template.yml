@@ -14,7 +14,11 @@ Resources:
       Timeout: 30
       CodeUri: mylambda/
       
-      # పర్మిషన్లు ఇక్కడ ఉండాలి (Function కింద)
+      # ఎన్విరాన్మెంట్ వేరియబుల్స్ (బెస్ట్ ప్రాక్టీస్)
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref MyChatHistoryTable
+
       Policies:
         - Statement:
             - Effect: Allow
@@ -36,7 +40,6 @@ Resources:
                 - "logs:PutLogEvents"
               Resource: "arn:aws:logs:*:*:*"
 
-      # ఈవెంట్స్ (API Gateway) కూడా ఇక్కడే ఉండాలి
       Events:
         MyApiEvent:
           Type: Api
@@ -44,16 +47,16 @@ Resources:
             Path: /ask
             Method: post
 
-  
+  # 2. డైనమోడీబీ టేబుల్ డెఫినిషన్
   MyChatHistoryTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: MyChatHistoryTable
       AttributeDefinitions:
-        - AttributeName: userid
+        - AttributeName: sessionId # ఇక్కడ పేరు మార్చాను
           AttributeType: S
       KeySchema:
-        - AttributeName: sessionId
+        - AttributeName: sessionId # ఇక్కడ కూడా అదే పేరు ఉండాలి
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:
