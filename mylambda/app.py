@@ -1,5 +1,6 @@
 import json
 from pydantic import BaseModel
+from boto3.dynamodb.conditions import Key
 import logging
 import boto3
 from uuid import uuid4
@@ -27,10 +28,19 @@ def lambda_handler(event,context):
      logging.info(f"Request Received {req}")
 
      user_id = req.userid or str(uuid4)
+     items = table.query(KeyConditionExpression=Key('sessionId').eq(user_id),ProjectionExpression="question, answer")
+     data = items.get('Items',[])
+     formatted_chat = ""
+     for item in data:
+        q = item.get('question', '')
+        a = item.get('answer', '')
+        formatted_chat += f"<|start_header_id|>user<|end_header_id|>\n\n{q}<|eot_id|>"
+        formatted_chat += f"<|start_header_id|>assistant<|end_header_id|>\n\n{a}<|eot_id|>"
+
     
 
      native_request = {
-            "prompt": f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{req.message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+            "prompt": f"<|begin_of_text|>{formatted_chat}<|start_header_id|>user<|end_header_id|>\n\n{req.message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
             "max_gen_len": 512,
             "temperature": 0.5,
             "top_p": 0.9
