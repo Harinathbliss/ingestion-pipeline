@@ -53,10 +53,10 @@ Resources:
     Properties:
       TableName: MyChatHistoryTable
       AttributeDefinitions:
-        - AttributeName: sessionId # ఇక్కడ పేరు మార్చాను
+        - AttributeName: userid # ఇక్కడ పేరు మార్చాను
           AttributeType: S
       KeySchema:
-        - AttributeName: sessionId # ఇక్కడ కూడా అదే పేరు ఉండాలి
+        - AttributeName: userid # ఇక్కడ కూడా అదే పేరు ఉండాలి
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:
