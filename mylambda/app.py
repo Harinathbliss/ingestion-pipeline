@@ -28,7 +28,7 @@ def lambda_handler(event,context):
      logging.info(f"Request Received {req}")
 
      user_id = req.userid or str(uuid4)
-     items = table.query(KeyConditionExpression=Key('sessionId').eq(user_id),ProjectionExpression="question, answer")
+     items = table.query(KeyConditionExpression=Key('userid').eq(user_id),ProjectionExpression="question, answer")
      data = items.get('Items',[])
      formatted_chat = ""
      for item in data:
