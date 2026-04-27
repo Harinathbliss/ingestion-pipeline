@@ -50,7 +50,7 @@ def lambda_handler(event,context):
 
      table.put_item(
           Item={
-               "user_id":user_id,
+               "userid":user_id,
                "question":req.message,
                "answer":answer
           }

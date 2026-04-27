@@ -44,13 +44,20 @@ Resources:
             Path: /ask
             Method: post
 
-  # 2. డైనమోడీబీ టేబుల్ డెఫినిషన్
+  
   MyChatHistoryTable:
-    Type: AWS::Serverless::SimpleTable
+    Type: AWS::DynamoDB::Table
     Properties:
-      PrimaryKey:
-        Name: userid
-        Type: String
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
+      TableName: MyChatHistoryTable
+      AttributeDefinitions:
+        - AttributeName: userid
+          AttributeType: S
+      KeySchema:
+        - AttributeName: sessionId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
