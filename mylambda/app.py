@@ -2,15 +2,19 @@ import json
 from pydantic import BaseModel
 import logging
 import boto3
+from uuid import uuid4
 
 logger = logging.getLogger()
 logger.setLevel('INFO')
 
 bedrock = boto3.client(service_name="bedrock-runtime",region_name='us-east-1')
+dynamodb = boto3.resource('dynamodb',region_name='us-east-1')
+table = dynamodb.Table('MyChatHistoryTable')
 
 
 class ChatDemo(BaseModel):
     message:str
+    userid:str
 
 
 def lambda_handler(event,context):
@@ -21,6 +25,8 @@ def lambda_handler(event,context):
      req = ChatDemo(**request_body)
 
      logging.info(f"Request Received {req}")
+
+     user_id = req.userid or str(uuid4)
     
 
      native_request = {
@@ -41,6 +47,14 @@ def lambda_handler(event,context):
         
         
      answer = response_body.get('generation', '')
+
+     table.put_item(
+          Item={
+               "user_id":user_id,
+               "question":req.message,
+               "answer":answer
+          }
+     )
 
 
 

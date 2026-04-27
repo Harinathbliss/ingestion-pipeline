@@ -12,21 +12,37 @@ Resources:
       MemorySize: 256
       Timeout: 30
       CodeUri: mylambda/
+  MyChatHistoryTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: userid
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
       
-      # IAM Policies ఇక్కడ యాడ్ చేయబడ్డాయి
+      
       Policies:
         - Statement:
             - Effect: Allow
               Action:
                 - "bedrock:InvokeModel"
                 - "bedrock:InvokeModelWithResponseStream"
-              Resource: "*" # భద్రత కోసం మీరు వాడుతున్న మోడల్ ARN ని ఇక్కడ ఇవ్వడం ఉత్తమం
+              Resource: "*"
             - Effect: Allow
               Action:
                 - "logs:CreateLogGroup"
                 - "logs:CreateLogStream"
                 - "logs:PutLogEvents"
               Resource: "arn:aws:logs:*:*:*"
+            - Effect: Allow
+                Action:
+                  - "dynamodb:PutItem"
+                  - "dynamodb:GetItem"
+                  - "dynamodb:Query"
+                  - "dynamodb:UpdateItem"
+                Resource: !GetAtt MyChatHistoryTable.Arn
 
       Events:
         MyApiEvent:
