@@ -10,14 +10,14 @@ Resources:
       Runtime: python3.12
       Architectures:
         - x86_64
-      MemorySize: 256
-      Timeout: 30
+      MemorySize: 512
+      Timeout: 60
       CodeUri: mylambda/
       
-      # ఎన్విరాన్మెంట్ వేరియబుల్స్ (బెస్ట్ ప్రాక్టీస్)
       Environment:
         Variables:
           TABLE_NAME: !Ref MyChatHistoryTable
+          SOURCE_BUCKET: !Ref MyDataBucket 
 
       Policies:
         - Statement:
@@ -33,6 +33,14 @@ Resources:
                 - "dynamodb:Query"
                 - "dynamodb:UpdateItem"
               Resource: !GetAtt MyChatHistoryTable.Arn
+            # S3 Permissions
+            - Effect: Allow
+              Action:
+                - "s3:GetObject"
+                - "s3:ListBucket"
+              Resource: 
+                - !GetAtt MyDataBucket.Arn
+                - !Sub "${MyDataBucket.Arn}/*"
             - Effect: Allow
               Action:
                 - "logs:CreateLogGroup"
@@ -46,17 +54,29 @@ Resources:
           Properties:
             Path: /ask
             Method: post
+        # S3 Trigger అప్‌డేట్
+        S3UploadTrigger:
+          Type: S3
+          Properties:
+            Bucket: !Ref MyDataBucket
+            Events: s3:ObjectCreated:*
 
-  # 2. డైనమోడీబీ టేబుల్ డెఫినిషన్
+  # 2. S3 బకెట్ (పేరు 'docs' గా మార్చాను)
+  MyDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: docs # ఇక్కడ మీ బకెట్ పేరు ఇచ్చాను
+
+  # 3. డైనమోడీబీ టేబుల్
   MyChatHistoryTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: MyChatHistoryTable
       AttributeDefinitions:
-        - AttributeName: userid # ఇక్కడ పేరు మార్చాను
+        - AttributeName: userid
           AttributeType: S
       KeySchema:
-        - AttributeName: userid # ఇక్కడ కూడా అదే పేరు ఉండాలి
+        - AttributeName: userid
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:

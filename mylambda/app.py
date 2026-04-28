@@ -8,63 +8,20 @@ from uuid import uuid4
 logger = logging.getLogger()
 logger.setLevel('INFO')
 
-bedrock = boto3.client(service_name="bedrock-runtime",region_name='us-east-1')
-dynamodb = boto3.resource('dynamodb',region_name='us-east-1')
-table = dynamodb.Table('MyChatHistoryTable')
-
-
-class ChatDemo(BaseModel):
-    message:str
-    userid:str
+s3_client = boto3.client('s3')
 
 
 def lambda_handler(event,context):
-     request_body = json.loads(event.get('body',{}))
+
+     request_body = event.get('body') or {}
+     bucket = request_body['Records'][0]['s3']['bucket']['name']
+     key = request_body['Records'][0]['s3']['object']['key']
+
+     response = s3_client.get_object(Bucket=bucket,Key=key)
+     file_content = response['Body'].read().decode('utf-8')
+
+     logger.info(file_content)
      
-     logging.info(f"Request Body {request_body}")
-
-     req = ChatDemo(**request_body)
-
-     logging.info(f"Request Received {req}")
-
-     user_id = req.userid or str(uuid4)
-     items = table.query(KeyConditionExpression=Key('userid').eq(user_id),ProjectionExpression="question, answer")
-     data = items.get('Items',[])
-     formatted_chat = ""
-     for item in data:
-        q = item.get('question', '')
-        a = item.get('answer', '')
-        formatted_chat += f"<|start_header_id|>user<|end_header_id|>\n\n{q}<|eot_id|>"
-        formatted_chat += f"<|start_header_id|>assistant<|end_header_id|>\n\n{a}<|eot_id|>"
-
-    
-
-     native_request = {
-            "prompt": f"<|begin_of_text|>{formatted_chat}<|start_header_id|>user<|end_header_id|>\n\n{req.message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
-            "max_gen_len": 512,
-            "temperature": 0.5,
-            "top_p": 0.9
-    }
-    
-     model_id = 'meta.llama3-8b-instruct-v1:0' 
-
-     response = bedrock.invoke_model(
-            modelId=model_id,
-            body=json.dumps(native_request)
-    )
-    
-     response_body = json.loads(response.get('body').read())
-        
-        
-     answer = response_body.get('generation', '')
-
-     table.put_item(
-          Item={
-               "userid":user_id,
-               "question":req.message,
-               "answer":answer
-          }
-     )
 
 
 
@@ -72,7 +29,6 @@ def lambda_handler(event,context):
      return {
           "statusCode":200,
            "body":json.dumps({
-                "message":req.message,
-                "answer":answer
+            "message":"Successfully Downloaded File"
      })
      }
