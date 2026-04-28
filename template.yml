@@ -48,13 +48,7 @@ Resources:
                 - "logs:PutLogEvents"
               Resource: "arn:aws:logs:*:*:*"
 
-      Events:
-        MyApiEvent:
-          Type: Api
-          Properties:
-            Path: /ask
-            Method: post
-        # గమనిక: ఇక్కడ నుండి S3UploadTrigger ని తీసేశాను (Circular Dependency ని నివారించడానికి)
+      
 
   # 2. మ్యాన్యువల్ పర్మిషన్ (Handshake)
   # ఇది S3 బకెట్ కి మీ ల్యాంబ్డాని పిలిచే అధికారాన్ని ఇస్తుంది

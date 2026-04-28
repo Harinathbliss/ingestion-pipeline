@@ -13,9 +13,9 @@ s3_client = boto3.client('s3')
 
 def lambda_handler(event,context):
 
-     request_body = event.get('body') or {}
-     bucket = request_body['Records'][0]['s3']['bucket']['name']
-     key = request_body['Records'][0]['s3']['object']['key']
+     
+     bucket = event['Records'][0]['s3']['bucket']['name']
+     key = event['Records'][0]['s3']['object']['key']
 
      response = s3_client.get_object(Bucket=bucket,Key=key)
      file_content = response['Body'].read().decode('utf-8')
