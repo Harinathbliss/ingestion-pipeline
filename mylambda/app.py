@@ -9,6 +9,14 @@ from pypdf import PdfReader
 import os
 import io
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from botocore.config import Config
+
+config = Config(
+    retries = {
+        'max_attempts': 10,
+        'mode': 'standard' # ఇది ఆటోమేటిక్ గా 'Wait and Retry' చేస్తుంది
+    }
+)
 
 
 
@@ -17,7 +25,7 @@ logger = logging.getLogger()
 logger.setLevel('INFO')
 
 s3_client = boto3.client('s3')
-bedrock_client = boto3.client(service_name='bedrock-runtime')
+bedrock_client = boto3.client(service_name='bedrock-runtime',config=config)
 
 
 
