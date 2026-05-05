@@ -8,7 +8,7 @@ import urllib.parse
 from pypdf import PdfReader
 import os
 import io
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 
