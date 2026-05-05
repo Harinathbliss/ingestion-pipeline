@@ -61,20 +61,30 @@ def lambda_handler(event,context):
      
      chunks = splitter.split_text(text)
      proceded_data = []
-     for i,chunk in enumerate(chunks):
-          native_request = {"input_chunk":chunk}
+     for i in range(0,len(chunks),10):
+          current_batch = chunks[i : i + 10]
+          native_request = {
+            "inputStrings": current_batch,
+            "embeddingConfig": {
+                "outputEmbeddingLength": 1536
+            }
+          }
           request = json.dumps(native_request)
           bedrock_response = bedrock_client.invoke_model(
-          modelId="amazon.titan-embed-text-v1", 
+          modelId="amazon.titan-embed-text-v2:0", 
           contentType="application/json", 
           accept="application/json", 
           body=request
                )
           response_body = json.loads(bedrock_response.get('body').read())
           embedding = response_body.get('embedding')
-          proceded_data.append({
-              "id":i,"vector":embedding,"text":chunk
-          })
+          for j, embedding in enumerate(embedding):
+            actual_index = i + j
+            proceded_data.append({
+                "id": actual_index,
+                "vector": embedding,
+                "text": current_batch[j]
+            })
 
      return {
           "statusCode":200,
