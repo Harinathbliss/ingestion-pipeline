@@ -1,98 +1,111 @@
 import json
-from pydantic import BaseModel
-from boto3.dynamodb.conditions import Key
 import logging
 import boto3
-from uuid import uuid4
 import urllib.parse
-from pypdf import PdfReader
-import os
 import io
+import os
+from uuid import uuid4
+from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from botocore.config import Config
 
+# AWS SDK Config: Retry mechanism for Free Tier accounts
 config = Config(
     read_timeout=120,   
     connect_timeout=60,
     retries = {
         'max_attempts': 10,
-        'mode': 'standard' # ఇది ఆటోమేటిక్ గా 'Wait and Retry' చేస్తుంది
+        'mode': 'standard' 
     }
 )
-
-
-
 
 logger = logging.getLogger()
 logger.setLevel('INFO')
 
 s3_client = boto3.client('s3')
-bedrock_client = boto3.client(service_name='bedrock-runtime',config=config)
+bedrock_client = boto3.client(service_name='bedrock-runtime', config=config)
 
+def lambda_handler(event, context):
+    try:
+        # 1. S3 నుండి ఫైల్ వివరాలను పొందడం
+        bucket = event['Records'][0]['s3']['bucket']['name']
+        key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'])
+        
+        logger.info(f"Processing file: {key} from bucket: {bucket}")
 
+        # 2. PDF చదవడం
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        pdf_reader = PdfReader(io.BytesIO(response['Body'].read()))
 
+        full_text = ""
+        for page in pdf_reader.pages:
+            text = page.extract_text()
+            if text:
+                full_text += text
 
-def lambda_handler(event,context):
+        # 3. టెక్స్ట్ ని చంక్స్ గా విభజించడం
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500, # కొంచెం పెద్ద సైజు పెడితే ప్రాసెసింగ్ ఈజీ అవుతుంది
+            chunk_overlap=50,
+            separators=["\n\n", "\n", " ", ""]
+        )
+        
+        chunks = splitter.split_text(full_text)
+        logger.info(f"Total chunks created: {len(chunks)}")
 
-     
-     bucket = event['Records'][0]['s3']['bucket']['name']
-     key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'])
-     file_name = key.split('.')
-     file_extension = file_name[-1]
-
-     
-     logger.info(bucket)
-     logger.info(key)
-     logger.info(file_extension)
-     
-
-     response = s3_client.get_object(Bucket=bucket,Key=key)
-     pdf_reader = PdfReader(io.BytesIO(response['Body'].read()))
-
-     full_text = ""
-     for page in pdf_reader.pages:
-         text = page.extract_text()
-         if text:
-            full_text += text
-
-     splitter = RecursiveCharacterTextSplitter(
-               chunk_size=100,
-               chunk_overlap=20,
-               separators=["\n\n", "\n", " ", ""]
-     )
-     
-     chunks = splitter.split_text(full_text)
-     logger.info(f"Chunks {chunks}")
-     proceded_data = []
-    #  for i in range(0,len(chunks),10):
-    #       current_batch = chunks[i : i + 10]
-     native_request = {
-            "inputStrings": chunks,
-            "embeddingConfig": {
-                "outputEmbeddingLength": 1024
+        all_embeddings_data = []
+        
+        # 4. Cohere v3 బ్యాచింగ్ (గరిష్టంగా 96 చంక్స్ ఒకేసారి)
+        # ఫ్రీ టైర్ లో ఒకేసారి ఎక్కువ పంపితే 'Throttling' వస్తుంది
+        batch_size = 90 
+        
+        for i in range(0, len(chunks), batch_size):
+            current_batch = chunks[i : i + batch_size]
+            
+            # Cohere v3 Payload Structure
+            native_request = {
+                "texts": current_batch,
+                "input_type": "search_document",
+                "truncate": "NONE"
             }
-    }
-        #   logger.info(f"Current Batch {current_batch}")
-     request = json.dumps(native_request)
-     bedrock_response = bedrock_client.invoke_model(
-          modelId="cohere.embed-english-v3", 
-          contentType="application/json", 
-          accept="application/json", 
-          body=request
-     )
-     response_body = json.loads(bedrock_response.get('body').read())
-     embedding = response_body.get('embeddings')
-        #   for j, embedding in enumerate(embedding):
-        #     actual_index = i + j
-            # proceded_data.append({
-            #     "id": actual_index,
-            #     "vector": embedding,
-            #     "text": current_batch[j]
-            # })
+            
+            request_body = json.dumps(native_request)
+            
+            # 5. Bedrock ని ఇన్వోక్ చేయడం
+            bedrock_response = bedrock_client.invoke_model(
+                modelId="cohere.embed-english-v3", 
+                contentType="application/json", 
+                accept="application/json", 
+                body=request_body
+            )
+            
+            response_json = json.loads(bedrock_response.get('body').read())
+            batch_embeddings = response_json.get('embeddings')
 
-     return {
-          "statusCode":200,
-           "body":json.dumps({
-            "message": embedding
-     })
-     }
+            # డేటాను ఒక స్ట్రక్చర్ లో అమర్చడం
+            for j, emb in enumerate(batch_embeddings):
+                all_embeddings_data.append({
+                    "id": str(uuid4()),
+                    "text": current_batch[j],
+                    "vector": emb
+                })
+
+        logger.info(f"Successfully generated {len(all_embeddings_data)} embeddings")
+
+        # 6. ఫైనల్ రెస్పాన్స్
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": "Embeddings generated successfully",
+                "count": len(all_embeddings_data),
+                # గమనిక: అన్నీ ఎంబెడ్డింగ్స్ బాడీలో పంపితే 6MB లిమిట్ దాటిపోవచ్చు
+                "data_preview": all_embeddings_data[:2] # శాంపిల్ కోసం మొదటి రెండు మాత్రమే
+            })
+        }
+
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)})
+        }
