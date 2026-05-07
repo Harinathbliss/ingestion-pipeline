@@ -60,6 +60,7 @@ def lambda_handler(event,context):
      )
      
      chunks = splitter.split_text(full_text)
+     logger.info(f"Chunks {chunks}")
      proceded_data = []
      for i in range(0,len(chunks),10):
           current_batch = chunks[i : i + 10]
@@ -69,9 +70,10 @@ def lambda_handler(event,context):
                 "outputEmbeddingLength": 1536
             }
           }
+          logger.info(f"Current Batch {current_batch}")
           request = json.dumps(native_request)
           bedrock_response = bedrock_client.invoke_model(
-          modelId="amazon.titan-embed-text-v2:0", 
+          modelId="cohere.embed-english-v3", 
           contentType="application/json", 
           accept="application/json", 
           body=request
