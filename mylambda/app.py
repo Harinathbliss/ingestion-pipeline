@@ -8,8 +8,15 @@ from uuid import uuid4
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from botocore.config import Config
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
 
 # AWS SDK Config: Retry mechanism for Free Tier accounts
+
+QDRANT_HOST = "54.145.235.24" 
+QDRANT_PORT = 6333
+
+
 config = Config(
     read_timeout=120,   
     connect_timeout=60,
@@ -18,6 +25,10 @@ config = Config(
         'mode': 'standard' 
     }
 )
+
+client = QdrantClient(host=QDRANT_HOST, port=6333)
+
+collection_name = "pdf_knowledge_base"
 
 logger = logging.getLogger()
 logger.setLevel('INFO')
@@ -28,6 +39,7 @@ bedrock_client = boto3.client(service_name='bedrock-runtime', config=config)
 def lambda_handler(event, context):
     try:
         # 1. S3 నుండి ఫైల్ వివరాలను పొందడం
+        collection_name = "my_pdf_collection"
         bucket = event['Records'][0]['s3']['bucket']['name']
         key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'])
         
@@ -36,6 +48,10 @@ def lambda_handler(event, context):
         # 2. PDF చదవడం
         response = s3_client.get_object(Bucket=bucket, Key=key)
         pdf_reader = PdfReader(io.BytesIO(response['Body'].read()))
+        client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(size=1024, distance=Distance.COSINE),
+        )
 
         full_text = ""
         for page in pdf_reader.pages:
@@ -89,6 +105,27 @@ def lambda_handler(event, context):
                     "text": current_batch[j],
                     "vector": emb
                 })
+
+                k = {
+                    "id": str(uuid4()),
+                    "text": current_batch[j],
+                    "vector": emb
+                }
+
+                client.upsert(
+                collection_name=collection_name,
+                points=[
+                    PointStruct(
+                    id=str(uuid4()), 
+                    vector=emb,
+                    payload={"text": current_batch[j]}
+                        )
+                        ]
+            
+                )
+
+
+
 
         logger.info(f"Successfully generated {len(all_embeddings_data)} embeddings")
 
