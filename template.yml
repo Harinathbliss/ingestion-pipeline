@@ -18,7 +18,7 @@ Resources:
           TABLE_NAME: !Ref MyChatHistoryTable
           SOURCE_BUCKET: "harinathdocs"
           # ఇక్కడ మీ EC2 Public IP ఇవ్వండి (EC2 Dashboard లో ఉంటుంది)
-          QDRANT_HOST: "3.82.4.15"
+          QDRANT_HOST: "54.81.245.161"
           QDRANT_PORT: "6333"
           # సెక్యూరిటీ కోసం API Key వాడటం మంచిది
          # QDRANT_API_KEY: "your_secret_key_if_set"
